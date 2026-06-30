@@ -1,6 +1,6 @@
 import numpy as np
 
-clas RLS:
+class RLS:
 	def __init__(self, n_features, forgetting= 0.99, delta=1000):
 		self.lambda_ = forgetting
 		self.w = np.zeroes((n_features, 1))
