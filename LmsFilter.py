@@ -1,10 +1,11 @@
 import numpy as np
 import matplotlib.pyplot as plt
+import librosa as lb
 
 #############################################################################
 #                                                                           #
 #    IN ORDER TO GET LIBRARIES TO WORK, FOR WINDOWS RUN FOLLOWING COMMAND:  #
-#       pip install numpy matplotlib                                        #
+#       pip install numpy matplotlib librosa                                #
 #                                                                           #
 #############################################################################
 
@@ -39,7 +40,7 @@ fs = 1000
 t = np.arange(0, 1, 1/fs)
 
 #source signal
-source = np.sin(2 * np.pi * 50 * t)
+source, rate = lb.load("sample.mp3")
 
 #noise signal
 noise = 0.5 * np.random.randn(len(t))
