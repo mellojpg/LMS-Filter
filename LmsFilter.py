@@ -16,6 +16,11 @@ class LMSFilter:
         self.weights = np.zeros(numTaps)
         self.buffer = np.zeros(numTaps)
 
+    def reset(self):
+        self.weights[:] = 0.0
+        self.buffer[:] = 0.0
+
+    #step through filter once
     def update(self, xn, dn):
         #shift over the input buffer
         self.buffer[1:] = self.buffer[:-1]
@@ -29,53 +34,61 @@ class LMSFilter:
 
         #update the weight
 
-        self.weights += 2 * self.mu * en * self.buffer
+        self.weights = self.weights + self.mu * en * self.buffer
 
         #return filtered output and error signal
         return yn, en
+    
+    #run filter over all signals
+    def run(self, x, d):
+        x = np.asarray(x)
+        d = np.asarray(d)
+        length = len(x)
 
-#noise cancellation part:
+        y = np.zeros(length)
+        e = np.zeros(length)
+        weightHistory = np.zeros((length, self.numTaps))
 
-fs = 1000
-t = np.arange(0, 1, 1/fs)
+        for i in range(length):
+            y[i], e[i] = self.update(x[i], d[i])
+            weightHistory[i] = self.weights
 
-#source signal
-source, rate = lb.load("sample.mp3")
-
-#noise signal
-noise = 0.5 * np.random.randn(len(t))
-
-#desired signal
-desired = source + noise
-
-#reference signal
-reference = noise + 0.05 * np.random.randn(len(t))
+        return{
+            "y": y,
+            "e": e,
+            "weights": self.weights.copy(),
+            "weightHistory": weightHistory,
+        }
 
 
-#filter setup
-N = 32
-mu = 0.01
-filter = LMSFilter(N, mu)
+#main func
 
-#create output/error arrays
-output = np.zeros(len(t))
-error = np.zeros(len(t))
+np.random.seed(0)
 
-for n in range(len(t)):
-    y, e = filter.update(reference[n], desired[n])
-    output[n] = y
-    error[n] = e
+source, st = lb.load("sample.mp3", sr=None, mono=True)
+numSamples = len(source)
+time = np.arange(numSamples)
 
-#update error signal
-cleanedSignal = error
+noise = np.random.randn(numSamples)
+noiseInSignal = 0.5 * noise + 0.2 * np.roll(noise, 1)
+noisySignal = source + noiseInSignal
 
-#plot the graphs
-plt.figure()
-plt.plot(t, desired, label="Noisy Signal")
-plt.plot(t, cleanedSignal, label="LMS Filtered Signal")
-plt.plot(t, source, label="Source Signal")
-plt.xlabel("time (s)")
-plt.ylabel("amplitude")
-plt.legend()
-plt.title("LMS Adaptive Noise Cancellation")
+filter = LMSFilter(numTaps=100, mu=0.00001)
+result = filter.run(noise, noisySignal)
+
+#side note: result["e"] is the error signal, which is the filtered output
+
+#plot
+figure, graph = plt.subplots(3, 1, figsize=(10,9))
+
+graph[0].plot(noisySignal, label="Noisy Signal", alpha=0.5)
+graph[1].plot(source, label="Source Signal", linewidth=2)
+graph[2].plot(result["e"], label="Filtered Signal", linewidth=1)
+graph[0].set_title("Adaptive Noise Cancellation")
+graph[0].set_xlabel("Sample")
+graph[0].legend(loc="upper right")
+graph[1].legend(loc="upper right")
+graph[2].legend(loc="upper right")
+
+plt.tight_layout()
 plt.show()
